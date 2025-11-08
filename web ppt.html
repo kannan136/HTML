@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width,initial-scale=1" />
+ <title>Expense Tracker — Full Offline (Demo)</title>
+ <style>
+ /* ---------- Basic Reset & Fonts ---------- */
+* {box-sizing: border-box; margin:0; padding:0; font-family: Inter, system-ui, Arial;}
+body {background:#f3f6f8; color:#1f2937; display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px;}
+
+ /* ---------- App Container ---------- */
+ .app {
+ width:100%;
+ max-width:980px;
+background:#fff;
+border-radius:12px;
+ box-shadow:0 8px 30px rgba(20,30,40,0.08);
+overflow:hidden;
+display:grid;
+grid-template-columns: 360px 1fr;
+ }
+
+ /* ---------- Left (Auth / Controls) ---------- */
+.side {
+padding:20px;
+ border-right:1px solid #eef2f6;
+background:linear-gradient(180deg,#fbfdff 0%, #ffffff 100%);
+ }
+ .brand {text-align:center; margin-bottom:14px;}
+ .brand h1 {font-size:20px; color:#0f766e; letter-spacing:0.5px;}
+ .card {background:#fff; padding:14px; border-radius:10px; margin-bottom:12px; box-shadow:0 2px 8px rgba(15,23,42,0.03);}
+
+label {font-size:13px; color:#374151; margin-bottom:6px; display:block;}
+input[type="text"], input[type="number"], input[type="password"], select {
+ width:100%; padding:10px 12px; border:1px solid #e6edf3; border-radius:8px; margin-bottom:10px;
+ }
+ button {background:#0ea5a4; border:none; color:white; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:600;}
+ button.secondary {background:#64748b;}
+ .muted {font-size:13px; color:#6b7280;}
+
+ .small-btn {padding:8px 10px; font-size:13px; margin-right:6px;}
+ .danger {background:#ef4444;}
+ .inline {display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+
+ /* ---------- Right (Main) ---------- */
+ .main {padding:22px; min-height:520px;}
+ .toprow {display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:12px;}
+ .summary {display:flex; gap:12px; align-items:center;}
+ .card-sm {background:#fff; padding:12px 14px; border-radius:10px; min-width:120px; text-align:center; box-shadow:0 2px 8px rgba(15,23,42,0.03);}
+ .card-sm h4 {font-size:12px; color:#6b7280; margin-bottom:6px;}
+.card-sm p {font-size:18px; font-weight:700; color:#0f766e;}
+
+ .controls {display:flex; gap:10px; align-items:center;}
+ .search {width:260px;}
+ .list {margin-top:14px;}
+ ul.txn-list {list-style:none; padding:0; display:flex; flex-direction:column; gap:8px; max-height:320px; overflow:auto;}
+ li.txn {background:#fbfdff; display:flex; justify-content:space-between; padding:10px 12px; border-radius:8px; align-items:center; border:1px solid #eef6f8;}
+ .txn .left {display:flex; gap:10px; align-items:center;}
+ .chip {padding:8px 10px; border-radius:8px; background:#e6f6f6; color:#065f46; font-weight:600;}
+ .amount.plus {color:#059669; font-weight:700;}
+.amount.minus {color:#b91c1c; font-weight:700;}
+.tx-actions button {margin-left:6px;}
+
+.form-row {display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+.form-row > * {flex:1 1 160px;}
+
+.chart-area {display:grid; grid-template-columns: 1fr 260px; gap:14px; margin-top:16px;}
+ .canvas-wrap {background:#fff; padding:12px; border-radius:10px; box-shadow:0 2px 8px rgba(15,23,42,0.03);}
+.legend {display:flex; flex-direction:column; gap:6px; margin-top:10px; font-size:13px;}
+
+.notice {margin-top:10px; padding:10px; border-radius:8px; background:#fffbe6; color:#92400e; border:1px solid #fff3c4;}
+ .budget-ok {color:#065f46;}
+
+ /* ---------- Responsive ---------- */
+@media (max-width:860px) {
+.app {grid-template-columns:1fr; max-width:720px;}
+.side {order:2; border-right:0; border-top:1px solid #eef2f6;}
+.chart-area {grid-template-columns:1fr;}
+}
+ </style>
+</head>
+<body>
+
+ <div class="app" id="app">
+ <aside class="side">
+ <div class="brand">
+     <h1>Expense Tracker</h1>
+ <div class="muted">Offline Demo • LocalStorage</div>
+ </div>
+
+<div class="card" id="auth-card">
+<div id="auth-forms">
+ <div id="signup-view">
+<label>Signup (new user)</label>
+ <input id="su-username" type="text" placeholder="username (no spaces)" />
+<input id="su-pass" type="password" placeholder="password" />
+ <div class="inline">
+<button id="btn-signup">Sign Up</button>
+<button class="secondary" id="to-login">Already have account</button>
+</div>
+<div class="muted" style="margin-top:8px;">Note: demo stores credentials locally (not secure for production).</div>
+</div>
+
+<div id="login-view" style="display:none;">
+<label>Login</label>
+ <input id="li-username" type="text" placeholder="username" />
+ <input id="li-pass" type="password" placeholder="password" />
+ <div class="inline">
+ <button id="btn-login">Login</button>
+ <button class="secondary" id="to-signup">Create account</button>
+</div>
+</div>
+ </div>
+
+<div id="user-panel" style="display:none; margin-top:12px;">
+<div class="muted">Signed in as</div>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+<strong id="cur-user">user</strong>
+ <div>
+ <button id="btn-logout" class="small-btn">Logout</button>
+ </div>
+</div>
+ </div>
+ </div>
+
+<div class="card" id="budget-card" style="display:none;">
+ <label>Set Budget (monthly)</label>
+ <input id="budget-input" type="number" placeholder="Enter budget amount" />
+ <div class="inline" style="margin-bottom:8px;">
+<button id="set-budget">Set Budget</button>
+ <button class="secondary" id="clear-budget">Clear</button>
+</div>
+ <div id="budget-status" class="muted">No budget set</div>
+</div>
+
+<div class="card" id="report-card" style="display:none;">
+     <label>Download Report</label>
+<div class="inline" style="margin-bottom:8px;">
+<button id="download-csv" class="small-btn">Download CSV</button>
+ <button id="print-report" class="small-btn secondary">Print (PDF)</button>
+</div>
+ <div class="muted">CSV opens in Excel. Print uses browser print (save as PDF).</div>
+</div>
+
+ <div style="height:10px"></div>
+<div class="muted" style="font-size:13px;">Tip: Create 2 users and try switching accounts to verify per-user data saves separately.</div>
+ </aside>
+
+ <main class="main">
+<div class="toprow">
+ <div class="summary">
+<div class="card-sm">
+<h4>Balance</h4>
+ <p id="ui-balance">₹0</p>
+</div>
+<div class="card-sm">
+<h4>Income</h4>
+<p id="ui-income">₹0</p>
+</div>
+ <div class="card-sm">
+<h4>Expense</h4>
+ <p id="ui-expense">₹0</p>
+ </div>
+</div>
+
+<div class="controls">
+<input id="search" class="search" type="text" placeholder="Search transactions..." />
+<select id="filter-cat">
+ <option value="">All categories</option>
+</select>
+</div>
+</div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:16px;">Transactions</h3>
+          <div class="muted" id="tx-count">0 items</div>
+        </div>
+        <div class="list">
+          <ul id="txn-list" class="txn-list"></ul>
+        </div>
+
+<div style="margin-top:12px;">
+<h4 style="font-size:14px; margin-bottom:8px;">Add / Edit Transaction</h4>
+<div class="form-row">
+<input id="inp-text" type="text" placeholder="Description (e.g., Groceries)" />
+ <select id="inp-category">
+<option value="Food">Food</option>
+<option value="Travel">Travel</option>
+<option value="Bills">Bills</option>
+ <option value="Shopping">Shopping</option>
+<option value="Other">Other</option>
+ </select>
+ </div>
+<div class="form-row" style="margin-top:6px;">
+<input id="inp-amount" type="number" placeholder="Amount (use negative for expense, positive for income)" />
+<input id="inp-date" type="text" placeholder="Date (YYYY-MM-DD) — optional" />
+</div>
+<div style="margin-top:10px; display:flex; gap:8px;">
+ <button id="add-txn">Add Transaction</button>
+ <button id="update-txn" style="display:none;" class="secondary">Update</button>
+<button id="cancel-edit" style="display:none;" class="secondary">Cancel</button>
+ </div>
+ </div>
+</div>
+
+ <div class="chart-area">
+ <div class="canvas-wrap">
+<h4 style="font-size:15px;">Spending by Category</h4>
+<canvas id="pieCanvas" width="420" height="300" style="width:100%; height:300px;"></canvas>
+<div id="pie-legend" class="legend"></div>
+</div>
+
+<div class="canvas-wrap">
+<h4 style="font-size:15px;">Quick Summary</h4>
+<div style="margin-top:8px;">
+ <div class="muted">Top category</div>
+<div id="top-cat" style="font-weight:700; font-size:18px; margin-top:6px;">—</div>
+</div>
+
+<div style="margin-top:12px;">
+<div class="muted">Budget Status</div>
+<div id="budget-info" class="notice" style="display:none;"></div>
+</div>
+</div>
+ </div>
+
+ </main>
+</div> 
+<script src="app.js"></script> 
+</body>
+</html>
